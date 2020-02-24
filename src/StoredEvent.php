@@ -12,7 +12,7 @@ use Spatie\SchemalessAttributes\SchemalessAttributes;
 
 class StoredEvent implements Arrayable
 {
-    public ?int $id;
+    public $id;
 
     /** @var array|string */
     public $event_properties;
