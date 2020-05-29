@@ -9,8 +9,6 @@ class EloquentSnapshot extends Model
 {
     public $guarded = [];
 
-    public $timestamps = false;
-
     protected $table = 'snapshots';
 
     public $casts = [

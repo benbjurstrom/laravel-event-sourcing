@@ -2,6 +2,31 @@
 
 All notable changes to `laravel-event-sourcing` will be documented in this file:
 
+## 3.1.5 - 2020-05-23
+
+- only include public properties of the aggregate when snapshotting (#105)
+
+
+## 3.1.4 - 2020-05-07
+
+- simplify snapshot dates
+
+## 3.1.3 - 2020-04-29
+
+- add `static` return type docblock for `AggregateRoot::retrieve`
+
+## 3.1.2 - 2020-04-07
+
+- make sure `created_at` is filled when creating a snapshot
+
+## 3.1.1 - 2020-03-21
+
+- expose `AggregateRoot` for testing state (#75)
+
+## 3.1.0 - 2020-03-03
+
+- add support for Laravel 7
+
 ## 3.0.4 - 2020-02-23
 
 - fix for serializing events that use immutable datatime objects (#67)

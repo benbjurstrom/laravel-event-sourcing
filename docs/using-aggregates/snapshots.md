@@ -33,7 +33,8 @@ protected function getState(): array
 {
     $class = new ReflectionClass($this);
 
-    return collect($class->getProperties())
+    return collect($class->getProperties(ReflectionProperty::IS_PUBLIC))
+        ->reject(fn (ReflectionProperty $reflectionProperty) => $reflectionProperty->isStatic())
         ->mapWithKeys(function (ReflectionProperty $property) {
             return [$property->getName() => $this->{$property->getName()}];
         })->toArray();

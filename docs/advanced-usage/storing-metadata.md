@@ -9,7 +9,7 @@ You can add metadata, such as the `id` of the logged in user, to a stored event.
 
 If you need to store metadata on all events you can leverage Laravel's native models events when using the `EloquentStoredEventRepository`.
 
-You must configure the package to [use your own eloquent event storage model](/laravel-event-sourcing/v1/advanced-usage/using-your-own-event-storage-model) that extends the `EloquentStoredEvent` model. On that model you can hook into the model lifecycle hooks.
+You must configure the package to [use your own eloquent event storage model](/laravel-event-sourcing/v3/advanced-usage/using-your-own-event-storage-model) that extends the `EloquentStoredEvent` model. On that model you can hook into the model lifecycle hooks.
 
 ```php
 use Spatie\EventSourcing\Models\EloquentStoredEvent;
@@ -20,9 +20,9 @@ class CustomStoredEvent extends EloquentStoredEvent
     {
         parent::boot();
         
-         static::creating(function(CustomStoredEvent $storedEvent) {
-             $storedEvent->meta_data['user_id'] = auth()->user()->id;
-         });
+        static::creating(function(CustomStoredEvent $storedEvent) {
+            $storedEvent->meta_data['user_id'] = auth()->user()->id;
+        });
     }
 }
 ```
@@ -57,9 +57,9 @@ class MetaDataProjector implements Projector
     public function onMoneyAdded(StoredEvent $storedEvent, StoredEventRepository $repository)
     {
         if (! Projectionist::isReplaying()) {
-           $storedEvent->meta_data['user_id'] = auth()->user()->id;
+            $storedEvent->meta_data['user_id'] = auth()->user()->id;
 
-           $repository->update($storedEvent);
+            $repository->update($storedEvent);
         }
         
         // ...

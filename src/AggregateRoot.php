@@ -22,6 +22,11 @@ abstract class AggregateRoot
 
     protected static bool $allowConcurrency = false;
 
+    /**
+     * @param string $uuid
+     *
+     * @return static
+     */
     public static function retrieve(string $uuid): self
     {
         $aggregateRoot = (new static());
@@ -88,7 +93,7 @@ abstract class AggregateRoot
     {
         $class = new ReflectionClass($this);
 
-        return collect($class->getProperties())
+        return collect($class->getProperties(ReflectionProperty::IS_PUBLIC))
             ->reject(fn (ReflectionProperty $reflectionProperty) => $reflectionProperty->isStatic())
             ->mapWithKeys(function (ReflectionProperty $property) {
                 return [$property->getName() => $this->{$property->getName()}];
@@ -145,7 +150,7 @@ abstract class AggregateRoot
                 $this->uuid,
                 $this->aggregateVersionAfterReconstitution,
                 $latestPersistedVersionId,
-                );
+            );
         }
     }
 
