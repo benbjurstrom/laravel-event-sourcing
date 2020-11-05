@@ -15,7 +15,7 @@ php artisan make:projector AccountBalanceProjector
 
 ## Registering projectors
 
-By default, the package will automatically find an register all projectors found in your application.
+By default, the package will automatically find and register all projectors found in your application.
 
 Alternatively, you can manually register projectors in the `projectors` key of the `event-sourcings` config file.
 
@@ -51,13 +51,10 @@ This is the contents of a class created by the artisan command mentioned in the 
 ```php
 namespace App\Projectors;
 
-use Spatie\EventSourcing\Projectors\Projector;
-use Spatie\EventSourcing\Projectors\ProjectsEvents;
+use Spatie\EventSourcing\EventHandlers\Projectors\Projector;
 
-class MyProjector implements Projector
+class MyProjector extends Projector
 {
-    use ProjectsEvents;
-
     public function onEventHappened(EventHappended $event)
     {
         // do some work
@@ -69,7 +66,7 @@ Just by adding a typehint of the event you want to handle makes our package call
 
 ## Getting the uuid of an event
 
-In most cases you want to have access to the event that was fired. When [using aggregates](/laravel-event-sourcing/v3/using-aggregates/writing-your-first-aggregate) your events probably won't contain the uuid associated with that event. To get to the uuid of an event simply add a parameter called `$aggregateUuid` that typehinted as a string.
+In most cases you want to have access to the event that was fired. When [using aggregates](/laravel-event-sourcing/v4/using-aggregates/writing-your-first-aggregate) your events probably won't contain the uuid associated with that event. To get to the uuid of an event simply add a parameter called `$aggregateUuid` that typehinted as a string.
 
 ```php
 // ...
@@ -97,13 +94,10 @@ namespace App\Projectors;
 
 use App\Account;
 use App\Events\MoneyAdded;
-use Spatie\EventSourcing\Projectors\Projector;
-use Spatie\EventSourcing\Projectors\ProjectsEvents;
+use Spatie\EventSourcing\EventHandlers\Projectors\Projector;
 
-class AccountBalanceProjector implements Projector
+class AccountBalanceProjector extends Projector
 {
-    use ProjectsEvents;
-
     /*
      * Here you can specify which event should trigger which method.
      */

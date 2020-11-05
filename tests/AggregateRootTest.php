@@ -2,19 +2,23 @@
 
 namespace Spatie\EventSourcing\Tests;
 
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
+use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
 use Spatie\EventSourcing\Exceptions\CouldNotPersistAggregate;
 use Spatie\EventSourcing\Exceptions\InvalidEloquentStoredEventModel;
 use Spatie\EventSourcing\Facades\Projectionist;
-use Spatie\EventSourcing\Models\EloquentStoredEvent;
 use Spatie\EventSourcing\Snapshots\EloquentSnapshot;
+use Spatie\EventSourcing\StoredEvents\Models\EloquentStoredEvent;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\AccountAggregateRoot;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\AccountAggregateRootThatAllowsConcurrency;
+use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\AccountAggregateRootWithFailingPersist;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\AccountAggregateRootWithStoredEventRepositorySpecified;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\Mailable\MoneyAddedMailable;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\Projectors\AccountProjector;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\Reactors\SendMailReactor;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\StorableEvents\MoneyAdded;
+use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\StorableEvents\MoneyMultiplied;
 use Spatie\EventSourcing\Tests\TestClasses\FakeUuid;
 use Spatie\EventSourcing\Tests\TestClasses\Models\Account;
 use Spatie\EventSourcing\Tests\TestClasses\Models\InvalidEloquentStoredEvent;
@@ -29,6 +33,26 @@ class AggregateRootTest extends TestCase
         parent::setUp();
 
         $this->aggregateUuid = FakeUuid::generate();
+    }
+
+    /** @test */
+    public function aggregate_root_resolves_dependencies_from_the_container()
+    {
+        $this->app->bind(AccountAggregateRoot::class, function () {
+            return new AccountAggregateRoot(42);
+        });
+
+        $root = AccountAggregateRoot::retrieve($this->aggregateUuid);
+
+        $this->assertEquals(42, $root->dependency);
+    }
+
+    /** @test */
+    public function it_can_get_the_uuid()
+    {
+        $aggregateRoot = AccountAggregateRoot::retrieve($this->aggregateUuid);
+
+        $this->assertEquals($this->aggregateUuid, $aggregateRoot->uuid());
     }
 
     /** @test */
@@ -249,25 +273,38 @@ class AggregateRootTest extends TestCase
     }
 
     /** @test */
-    public function projectors_will_get_called_when_an_aggregate_root_is_persisted()
+    public function it_can_persist_aggregate_roots_in_a_transaction()
     {
+        Mail::fake();
+
         Projectionist::addProjector(AccountProjector::class);
+        Projectionist::addReactor(SendMailReactor::class);
 
-        $aggregateRoot = AccountAggregateRoot::retrieve($this->aggregateUuid);
+        $aggregateRoot = AccountAggregateRoot::retrieve($this->aggregateUuid)->addMoney(123);
+        AggregateRoot::persistInTransaction($aggregateRoot);
 
-        $aggregateRoot->addMoney(123);
+        $this->assertCount(1, EloquentStoredEvent::get());
+        $this->assertCount(1, Account::get());
+        Mail::assertSent(MoneyAddedMailable::class);
+    }
 
-        $accounts = Account::get();
-        $this->assertCount(0, $accounts);
+    /** @test */
+    public function it_will_not_call_any_event_handlers_when_persisting_fails()
+    {
+        Mail::fake();
 
-        $aggregateRoot->persist();
+        Projectionist::addProjector(AccountProjector::class);
+        Projectionist::addReactor(SendMailReactor::class);
 
-        $accounts = Account::get();
-        $this->assertCount(1, $accounts);
+        $aggregateRoot = AccountAggregateRootWithFailingPersist::retrieve($this->aggregateUuid)->addMoney(123);
 
-        $account = Account::first();
-        $this->assertEquals(123, $account->amount);
-        $this->assertEquals($this->aggregateUuid, $account->uuid);
+        $this->assertExceptionThrown(
+            fn () => AggregateRoot::persistInTransaction($aggregateRoot)
+        );
+
+        $this->assertCount(0, EloquentStoredEvent::get());
+        $this->assertCount(0, Account::get());
+        Mail::assertNothingSent();
     }
 
     /** @test */
@@ -321,5 +358,68 @@ class AggregateRootTest extends TestCase
         $aggregateRoot->persist();
 
         $this->assertTestPassed();
+    }
+
+    /** @test */
+    public function it_fires_the_triggered_events_on_the_event_bus_when_configured()
+    {
+        config()->set('event-sourcing.dispatch_events_from_aggregate_roots', true);
+
+        Event::fake([
+            MoneyAdded::class,
+        ]);
+
+        AccountAggregateRoot::retrieve($this->aggregateUuid)
+            ->addMoney(100)
+            ->persist();
+
+        Event::assertDispatched(MoneyAdded::class, function (MoneyAdded $event) {
+            $this->assertEquals(100, $event->amount);
+            $this->assertTrue($event->firedFromAggregateRoot);
+
+            return true;
+        });
+    }
+
+    /** @test */
+    public function when_an_apply_method_is_public_it_can_have_additional_dependencies()
+    {
+        config()->set('event-sourcing.dispatch_events_from_aggregate_roots', true);
+
+        Event::fake([
+            MoneyMultiplied::class,
+        ]);
+
+        AccountAggregateRoot::retrieve($this->aggregateUuid)
+            ->multiplyMoney(100)
+            ->persist();
+
+        Event::assertDispatched(MoneyMultiplied::class);
+    }
+  
+    public function it_can_load_the_uuid()
+    {
+        $aggregateRoot = (new AccountAggregateRoot())->loadUuid($this->aggregateUuid);
+
+        $this->assertEquals($this->aggregateUuid, $aggregateRoot->uuid());
+    }
+
+    /** @test */
+    public function it_persists_when_uuid_is_loaded()
+    {
+        (new AccountAggregateRoot())
+            ->loadUuid($this->aggregateUuid)
+            ->addMoney(100)
+            ->persist();
+
+        $storedEvents = EloquentStoredEvent::get();
+        $this->assertCount(1, $storedEvents);
+
+        $storedEvent = $storedEvents->first();
+        $this->assertEquals($this->aggregateUuid, $storedEvent->aggregate_uuid);
+
+        $event = $storedEvent->event;
+        $this->assertInstanceOf(MoneyAdded::class, $event);
+        $this->assertEquals(100, $event->amount);
     }
 }

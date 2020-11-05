@@ -94,16 +94,16 @@ class Account extends Model
 
 ## Defining events
 
-Instead of creating, updating and deleting accounts, we're simply firing off events. All these events should implement `\Spatie\EventSourcing\ShouldBeStored`. This is an empty interface that signifies to our package that the event should be stored.
+Instead of creating, updating and deleting accounts, we're simply firing off events. All these events should extend `\Spatie\EventSourcing\StoredEvents\ShouldBeStored`. This abstract class signifies to our package that the event should be stored.
 
 Let's take a look at all events used in the `Account` model.
 
 ```php
 namespace App\Events;
 
-use Spatie\EventSourcing\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
 
-class AccountCreated implements ShouldBeStored
+class AccountCreated extends ShouldBeStored
 {
     /** @var array */
     public $accountAttributes;
@@ -118,9 +118,9 @@ class AccountCreated implements ShouldBeStored
 ```php
 namespace App\Events;
 
-use Spatie\EventSourcing\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
 
-class MoneyAdded implements ShouldBeStored
+class MoneyAdded extends ShouldBeStored
 {
     /** @var string */
     public $accountUuid;
@@ -140,9 +140,9 @@ class MoneyAdded implements ShouldBeStored
 ```php
 namespace App\Events;
 
-use Spatie\EventSourcing\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
 
-class MoneySubtracted implements ShouldBeStored
+class MoneySubtracted extends ShouldBeStored
 {
     /** @var string */
     public $accountUuid;
@@ -162,9 +162,9 @@ class MoneySubtracted implements ShouldBeStored
 ```php
 namespace App\Events;
 
-use Spatie\EventSourcing\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
 
-class AccountDeleted implements ShouldBeStored
+class AccountDeleted extends ShouldBeStored
 {
     /** @var string */
     public $accountUuid;
@@ -192,14 +192,10 @@ use App\Events\AccountCreated;
 use App\Events\AccountDeleted;
 use App\Events\MoneyAdded;
 use App\Events\MoneySubtracted;
-use Spatie\EventSourcing\Models\StoredEvent;
-use Spatie\EventSourcing\Projectors\Projector;
-use Spatie\EventSourcing\Projectors\ProjectsEvents;
+use Spatie\EventSourcing\EventHandlers\Projectors\Projector;
 
-class AccountBalanceProjector implements Projector
+class AccountBalanceProjector extends Projector
 {
-    use ProjectsEvents;
-
     public function onAccountCreated(AccountCreated $event)
     {
         Account::create($event->accountAttributes);
@@ -230,7 +226,7 @@ class AccountBalanceProjector implements Projector
 }
 ```
 
-Just by typehinting an event in a method will make the package call that method when the event occurs. By default the package will automatically discover and registering projectors.
+Just by type hinting an event in a method will make the package call that method when the event occurs. By default the package will automatically discover and registering projectors.
 
 ## Let's fire off some events
 
@@ -311,13 +307,10 @@ use App\Events\MoneyAdded;
 use App\Events\MoneySubtracted;
 use App\TransactionCount;
 use Spatie\EventSourcing\Models\StoredEvent;
-use Spatie\EventSourcing\Projectors\Projector;
-use Spatie\EventSourcing\Projectors\ProjectsEvents;
+use Spatie\EventSourcing\EventHandlers\Projectors\Projector;
 
-class TransactionCountProjector implements Projector
+class TransactionCountProjector extends Projector
 {
-    use ProjectsEvents;
-
     public function onMoneyAdded(MoneyAdded $event)
     {
         $transactionCounter = TransactionCount::firstOrCreate(['account_uuid' => $event->accountUuid]);

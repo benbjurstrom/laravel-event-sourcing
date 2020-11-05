@@ -1,13 +1,15 @@
 <?php
 
-namespace Spatie\EventSourcing;
+namespace Spatie\EventSourcing\StoredEvents\Repositories;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\LazyCollection;
 use Spatie\EventSourcing\EventSerializers\EventSerializer;
 use Spatie\EventSourcing\Exceptions\InvalidEloquentStoredEventModel;
-use Spatie\EventSourcing\Models\EloquentStoredEvent;
+use Spatie\EventSourcing\StoredEvents\Models\EloquentStoredEvent;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\StoredEvent;
 
 class EloquentStoredEventRepository implements StoredEventRepository
 {
@@ -15,7 +17,7 @@ class EloquentStoredEventRepository implements StoredEventRepository
 
     public function __construct()
     {
-        $this->storedEventModel = config('event-sourcing.stored_event_model', EloquentStoredEvent::class);
+        $this->storedEventModel = (string)config('event-sourcing.stored_event_model', EloquentStoredEvent::class);
 
         if (! new $this->storedEventModel instanceof EloquentStoredEvent) {
             throw new InvalidEloquentStoredEventModel("The class {$this->storedEventModel} must extend EloquentStoredEvent");
@@ -38,7 +40,12 @@ class EloquentStoredEventRepository implements StoredEventRepository
     {
         $query = $this->prepareEventModelQuery($startingFrom, $uuid);
 
-        return $query->orderBy('id')->cursor()->map(fn (EloquentStoredEvent $storedEvent) => $storedEvent->toStoredEvent());
+        /** @var LazyCollection $lazyCollection */
+        $lazyCollection = $query
+            ->orderBy('id')
+            ->cursor();
+
+        return $lazyCollection->map(fn (EloquentStoredEvent $storedEvent) => $storedEvent->toStoredEvent());
     }
 
     public function countAllStartingFrom(int $startingFrom, string $uuid = null): int
@@ -53,7 +60,10 @@ class EloquentStoredEventRepository implements StoredEventRepository
             ->uuid($uuid)
             ->afterVersion($version);
 
-        return $query->orderBy('id')->cursor()->map(fn (EloquentStoredEvent $storedEvent) => $storedEvent->toStoredEvent());
+        return $query
+            ->orderBy('id')
+            ->cursor()
+            ->map(fn (EloquentStoredEvent $storedEvent) => $storedEvent->toStoredEvent());
     }
 
     public function persist(ShouldBeStored $event, string $uuid = null, int $aggregateVersion = null): StoredEvent
@@ -61,12 +71,14 @@ class EloquentStoredEventRepository implements StoredEventRepository
         /** @var EloquentStoredEvent $eloquentStoredEvent */
         $eloquentStoredEvent = new $this->storedEventModel();
 
+        $eloquentStoredEvent->setOriginalEvent($event);
+        
         $eloquentStoredEvent->setRawAttributes([
             'event_properties' => app(EventSerializer::class)->serialize(clone $event),
             'aggregate_uuid' => $uuid,
             'aggregate_version' => $aggregateVersion,
-            'event_class' => self::getEventClass(get_class($event)),
-            'meta_data' => json_encode([]),
+            'event_class' => $this->getEventClass(get_class($event)),
+            'meta_data' => json_encode($event->metaData()),
             'created_at' => Carbon::now(),
         ]);
 
@@ -80,7 +92,7 @@ class EloquentStoredEventRepository implements StoredEventRepository
         $storedEvents = [];
 
         foreach ($events as $event) {
-            $storedEvents[] = self::persist($event, $uuid, $aggregateVersion);
+            $storedEvents[] = $this->persist($event, $uuid, $aggregateVersion);
         }
 
         return new LazyCollection($storedEvents);
@@ -110,7 +122,7 @@ class EloquentStoredEventRepository implements StoredEventRepository
     public function getLatestAggregateVersion(string $aggregateUuid): int
     {
         return $this->storedEventModel::query()
-            ->where('aggregate_uuid', $aggregateUuid)
+            ->uuid($aggregateUuid)
             ->max('aggregate_version') ?? 0;
     }
 

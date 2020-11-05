@@ -8,7 +8,7 @@ In the test suite of your application you probably also want to write some tests
 Imagine you have an `AccountAggregateRoot` that handles adding and subtract an amount for a bank account. The account has a limit of -$5000.
 
 ```php
-use Spatie\EventSourcing\AggregateRoot;
+use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
 
 class AccountAggregateRoot extends AggregateRoot
 {
@@ -86,22 +86,32 @@ public function it_will_not_make_subtractions_that_would_go_below_the_account_li
 }
 ```
 
-You could write the above test a bit shorter. The given events can be passed to the `fake` method. You're also not required to use the `when` function.
+The `given` and `assertRecorded` methods can accept a single event instances or an array with event instances. `assertNotRecorded` can also accept an array of class names.
+
+When you'd like to assert that only a specific event is recorded, you can use the `assertEventRecorded` method.
+
+If you don't expect any events to be recorded you can use `assertNothingRecorded`.
+
+Finally, you can also use `then`, it accepts a closure which is passed any input you've returned from the `when` function:
 
 ```php
 /** @test */
 public function it_will_not_make_subtractions_that_would_go_below_the_account_limit()
 {
-    AccountAggregateRoot::fake(new MoneySubtracted(4999))
-        ->subtractMoney(2)
-        ->assertRecorded(new AccountLimitHit(2))
-        ->assertNotRecorded(MoneySubtracted::class);
+    AccountAggregateRoot::fake()
+        ->given([new AccountCreated('Luke'), new MoneySubtracted(4999)])
+        ->when(function (AccountAggregate $accountAggregate) {
+            $accountAggregate->subtractMoney(2);
+
+            return $accountAggregate->uuid();
+        })
+        ->then(function($aggregateRootUuid) {
+            // …
+        });
 }
 ```
 
-The `fake`, `given` and `assertRecorded` methods can accept a single event instances or an array with event instances. `assertNotRecorded` can also accept an array of class names.
-
-If you don't expect any events to be recorded you can use `assertNothingRecorded`.
+You can choose to do manually perform assertions in the `then` closure. Alternatively, you can return `true` or `false` from. Returning false will fail the test.
 
 ## Disabling dispatching events
 

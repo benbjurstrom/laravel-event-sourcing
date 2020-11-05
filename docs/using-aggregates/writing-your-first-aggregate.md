@@ -3,7 +3,7 @@ title: Writing your first aggregate
 weight: 1
 ---
 
-An aggregate is a class that decides to record events based on past events. To know more about their general purpose and the idea behind them, read this section on [using aggregates to make decisions-based-on-the-past](/laravel-event-sourcing/v3/getting-familiar-with-event-sourcing/using-aggregates-to-make-decisions-based-on-the-past).
+An aggregate is a class that decides to record events based on past events. To know more about their general purpose and the idea behind them, read this section on [using aggregates to make decisions-based-on-the-past](/laravel-event-sourcing/v4/getting-familiar-with-event-sourcing/using-aggregates-to-make-decisions-based-on-the-past).
 
 ## Creating an aggregate
 
@@ -18,7 +18,7 @@ This will create a class like this:
 ```php
 namespace App\Aggregates;
 
-use Spatie\EventSourcing\AggregateRoot;
+use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
 
 
 class AccountAggregate extends AggregateRoot
@@ -35,7 +35,7 @@ First, let's add a `createAccount` method to our aggregate that will record the 
 ```php
 namespace App\Aggregates;
 
-use Spatie\EventSourcing\AggregateRoot;
+use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
 
 class AccountAggregate extends AggregateRoot
 {

@@ -4,9 +4,10 @@ namespace Spatie\EventSourcing\Tests\Models;
 
 use Spatie\EventSourcing\Exceptions\InvalidStoredEvent;
 use Spatie\EventSourcing\Facades\Projectionist;
-use Spatie\EventSourcing\Models\EloquentStoredEvent;
-use Spatie\EventSourcing\StoredEvent;
+use Spatie\EventSourcing\StoredEvents\Models\EloquentStoredEvent;
+use Spatie\EventSourcing\StoredEvents\StoredEvent;
 use Spatie\EventSourcing\Tests\TestCase;
+use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\StorableEvents\MoneyAdded;
 use Spatie\EventSourcing\Tests\TestClasses\Events\MoneyAddedEvent;
 use Spatie\EventSourcing\Tests\TestClasses\Models\Account;
 use Spatie\EventSourcing\Tests\TestClasses\Projectors\BalanceProjector;
@@ -91,6 +92,7 @@ class StoredEventTest extends TestCase
             'id' => $eloquentEvent->id,
             'event_properties' => json_encode($eloquentEvent->event_properties),
             'aggregate_uuid' => $eloquentEvent->aggregate_uuid ?? '',
+            'aggregate_version' => $eloquentEvent->aggregate_version ?? 0,
             'event_class' => $eloquentEvent->event_class,
             'meta_data' => $eloquentEvent->meta_data,
             'created_at' => $eloquentEvent->created_at,
@@ -112,12 +114,37 @@ class StoredEventTest extends TestCase
             'id' => $eloquentEvent->id,
             'event_properties' => $eloquentEvent->event_properties,
             'aggregate_uuid' => $eloquentEvent->aggregate_uuid ?? '',
+            'aggregate_version' => $eloquentEvent->aggregate_version ?? 0,
             'event_class' => $eloquentEvent->event_class,
             'meta_data' => $eloquentEvent->meta_data,
             'created_at' => $eloquentEvent->created_at,
         ]);
 
         $this->assertEquals(MoneyAddedEvent::class, get_class($storedEvent->event));
+    }
+
+    /** @test **/
+    public function it_exposes_the_aggregate_version()
+    {
+        $this->fireEvents();
+
+        $eloquentEvent = EloquentStoredEvent::first();
+
+        $storedEvent = $eloquentEvent->toStoredEvent();
+
+        $this->assertEquals(0, $storedEvent->aggregate_version);
+    }
+    
+    /** @test */
+    public function it_uses_the_original_event_if_set()
+    {
+        $originalEvent = new MoneyAdded(100);
+        
+        $eloquentStoredEvent = new EloquentStoredEvent();
+        
+        $eloquentStoredEvent->setOriginalEvent($originalEvent);
+        
+        $this->assertSame($originalEvent, $eloquentStoredEvent->event);
     }
 
     public function fireEvents(int $number = 1, string $className = MoneyAddedEvent::class)

@@ -2,7 +2,7 @@
 
 namespace Spatie\EventSourcing\Tests\TestClasses\AggregateRoots;
 
-use Spatie\EventSourcing\AggregateRoot;
+use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\StorableEvents\MoneyAdded;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\StorableEvents\MoneyMultiplied;
 
@@ -13,6 +13,13 @@ class AccountAggregateRoot extends AggregateRoot
     public int $aggregateVersion = 0;
 
     public int $aggregateVersionAfterReconstitution = 0;
+
+    public $dependency;
+
+    public function __construct($dependency = null)
+    {
+        $this->dependency = $dependency;
+    }
 
     public function addMoney(int $amount): self
     {
@@ -28,13 +35,13 @@ class AccountAggregateRoot extends AggregateRoot
         return $this;
     }
 
-    public function applyMoneyAdded(MoneyAdded $event)
+    protected function applyMoneyAdded(MoneyAdded $event)
     {
         $this->balance += $event->amount;
     }
 
-    public function applyMoneyMultiplied(MoneyMultiplied $event)
+    public function applyMoneyMultiplied(MoneyMultiplied $event, Math $math)
     {
-        $this->balance *= $event->amount;
+        $this->balance = $math->multiply($this->balance, $event->amount);
     }
 }

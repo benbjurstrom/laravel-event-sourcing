@@ -2,7 +2,7 @@
 
 namespace Spatie\EventSourcing\Tests\TestClasses\AggregateRoots;
 
-use Spatie\EventSourcing\AggregateRoot;
+use Spatie\EventSourcing\AggregateRoots\AggregateRoot;
 use Spatie\EventSourcing\Tests\TestClasses\AggregateRoots\StorableEvents\MoneyAdded;
 use Spatie\EventSourcing\Tests\TestClasses\Repositories\OtherEloquentStoredEventRepository;
 
@@ -19,7 +19,7 @@ class AccountAggregateRootWithStoredEventRepositorySpecified extends AggregateRo
         return $this;
     }
 
-    public function applyMoneyAdded(MoneyAdded $event)
+    protected function applyMoneyAdded(MoneyAdded $event)
     {
         $this->balance += $event->amount;
     }

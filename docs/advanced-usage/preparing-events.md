@@ -16,9 +16,9 @@ Here's an example of such event:
 ```php
 namespace App\Events;
 
-use Spatie\EventSourcing\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
 
-class MoneyAdded implements ShouldBeStored
+class MoneyAdded extends ShouldBeStored
 {
     /** @var string */
     public $accountUuid;
@@ -37,8 +37,6 @@ class MoneyAdded implements ShouldBeStored
 
 Whenever an event that implements `ShouldBeStored` is fired it will be serialized and written in the `stored_events` table. Immediately after that, the event will be passed to all projectors and reactors.
 
-If your event has an eloquent model, it should also use the `Illuminate\Queue\SerializesModels` trait so we are able to serialize these models correctly.
-
 ## Specifying a queue
 
 When a `StoredEvent` is created, we'll dispatch a job on the queue defined in the `queue` key of the `event-sourcing` config file. Queued projectors and reactors will get called when the job is executed on the queue.
@@ -48,9 +46,9 @@ On an event you can override the queue that should be used by adding a `queue` p
 ```php
 namespace App\Events;
 
-use Spatie\EventSourcing\ShouldBeStored;
+use Spatie\EventSourcing\StoredEvents\ShouldBeStored;
 
-class MyEvent implements ShouldBeStored
+class MyEvent extends ShouldBeStored
 {
     public $queue = 'alternativeQueue';
 
